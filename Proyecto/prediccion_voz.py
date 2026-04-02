@@ -6,6 +6,8 @@ import tempfile
 import os
 from collections import Counter
 
+clases = ["papa", "zanahoria", "choclo", "berenjena"]
+
 # ─────────────────────────────────────────────
 # 1. CARGAR MODELO ENTRENADO
 # ─────────────────────────────────────────────
@@ -19,9 +21,18 @@ def cargar_modelo():
     pca_media = np.load("pca_media.npy")
     return X_train, y_train, componentes, media_norm, std_norm, pca_media
 
+# modelo sin tener en cuenta papa
+def cargar_modelo_especializado():
+    X_train      = np.load("sub_X_train.npy")
+    y_train      = np.load("sub_y_train.npy")
+    componentes  = np.load("sub_pca_componentes.npy")
+    media_norm   = np.load("sub_norm_media.npy")
+    std_norm     = np.load("sub_norm_std.npy")
+    pca_media    = np.load("sub_pca_media.npy")
+    return X_train, y_train, componentes, media_norm, std_norm, pca_media
 
 # ─────────────────────
-# 2. CLASES KNN Y PCA
+# 2. KNN
 # ─────────────────────
 
 class KNN:
@@ -75,18 +86,13 @@ def extraer_caracteristicas(ruta_audio, n_mfcc=13):
     ])
 
 
-def preprocesar_audio(ruta_audio, media_norm, std_norm, pca_media, componentes):
-    # Extraer features
-    features = extraer_caracteristicas(ruta_audio)
-
+def preprocesar_audio(features_raw, media_norm, std_norm, pca_media, componentes):
     # Normalizar (igual que en entrenamiento)
-    features_norm = (features - media_norm) / (std_norm + 1e-8)
+    features_norm = (features_raw - media_norm) / (std_norm + 1e-8)
 
     # 3. PCA con la media del entrenamiento (no del audio individual)
     features_centrado = features_norm - pca_media
-    features_pca = features_centrado @ componentes
-
-    return features_pca
+    return features_centrado @ componentes
 
 
 # ─────────────────────────────────────────────
@@ -116,26 +122,43 @@ def grabar_audio(duracion=2, sample_rate=16000):
 
 
 # ─────────────────────────────────────────────
-# 5. PREDICCIÓN COMPLETA
+# 5. PREDICCIÓN JERÁRQUICA
 # ─────────────────────────────────────────────
 
-def predecir(archivo_audio, knn, media_norm, std_norm, pca_media, componentes):
-    clases = ["papa", "zanahoria", "choclo", "berenjena"]
+def predecir(archivo_audio, knn_general, knn_sub,
+             media_norm, std_norm, pca_media, componentes,
+             media_sub, std_sub, pca_media_sub, componentes_sub):
 
-    features_pca = preprocesar_audio(archivo_audio, media_norm, std_norm, pca_media, componentes)
+    # Extraer features raw una sola vez
+    features_raw = extraer_caracteristicas(archivo_audio)
 
-    clase_idx, votos = knn.predecir_uno(features_pca)
-    clase_predicha = clases[clase_idx]
+    # ── Clasificador general ──
+    feat_general = preprocesar_audio(features_raw, media_norm, std_norm, pca_media, componentes)
+    clase_general, votos_general = knn_general.predecir_uno(feat_general)
 
-    # Mostrar confianza (% de votos a favor)
-    total_votos = sum(votos.values())
-    confianza   = votos[clase_idx] / total_votos * 100
+    # ── Si predice papa, resultado final ──
+    if clase_general == 0:
+        confianza = votos_general[0] / sum(votos_general.values()) * 100
+        print("\n" + "="*40)
+        print(f"Predicción: PAPA")
+        print(f"Confianza:  {confianza:.0f}%  ({votos_general[0]}/{sum(votos_general.values())} votos)")
+        print(f"[Clasificador: general]")
+        print("="*40)
+        return "papa", confianza
+
+    # ── Si no, usar sub-clasificador ──
+    feat_sub = preprocesar_audio(features_raw, media_sub, std_sub, pca_media_sub, componentes_sub)
+    clase_sub, votos_sub = knn_sub.predecir_uno(feat_sub)
+
+    clase_predicha = clases[clase_sub]
+    confianza      = votos_sub[clase_sub] / sum(votos_sub.values()) * 100
 
     print("\n" + "="*40)
     print(f"Predicción: {clase_predicha.upper()}")
-    print(f"Confianza:  {confianza:.0f}%  ({votos[clase_idx]}/{total_votos} votos)")
+    print(f"Confianza:  {confianza:.0f}%  ({votos_sub[clase_sub]}/{sum(votos_sub.values())} votos)")
+    print(f"[Clasificador: general → especializado]")
     print("="*40)
-
+    
     return clase_predicha, confianza
 
 
@@ -144,13 +167,17 @@ def predecir(archivo_audio, knn, media_norm, std_norm, pca_media, componentes):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-
     print("Cargando modelo...")
     X_train, y_train, componentes, media_norm, std_norm, pca_media = cargar_modelo()
+    X_sub, y_sub, comp_sub, media_sub, std_sub, pca_media_sub = cargar_modelo_especializado()
 
-    knn = KNN(k=5)
-    knn.fit(X_train, y_train)
-    print("Modelo listo")
+    knn_general = KNN(k=5)
+    knn_general.fit(X_train, y_train)
+
+    knn_sub = KNN(k=5)
+    knn_sub.fit(X_sub, y_sub)
+    
+    print("Modelos listos")
 
     print("\n" + "="*40)
     print("RECONOCEDOR DE VERDURAS POR VOZ")
@@ -172,7 +199,9 @@ if __name__ == "__main__":
         elif opcion == "a":
             ruta = input("Ruta del archivo .wav: ").strip()
             if os.path.exists(ruta):
-                predecir(ruta, knn, media_norm, std_norm, pca_media, componentes)
+                predecir(ruta, knn_general, knn_sub,
+                         media_norm, std_norm, pca_media, componentes,
+                         media_sub, std_sub, pca_media_sub, comp_sub)
             else:
                 print("❌Archivo no encontrado")
 
@@ -180,7 +209,9 @@ if __name__ == "__main__":
             # Grabar desde micrófono
             try:
                 archivo = grabar_audio(duracion=2)
-                predecir(archivo, knn, media_norm, std_norm, pca_media, componentes)
+                predecir(archivo, knn_general, knn_sub,
+                         media_norm, std_norm, pca_media, componentes,
+                         media_sub, std_sub, pca_media_sub, comp_sub)
                 os.remove(archivo)  # limpiar archivo temporal
             except Exception as e:
                 print(f"❌Error: {e}")

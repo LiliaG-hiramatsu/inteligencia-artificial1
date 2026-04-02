@@ -5,6 +5,9 @@ import numpy as np
 from PIL import Image
 from kmeans import KMeans_propio, extraer_caracteristicas_imagen
 
+### este es un código de pruba para ver la eficacia del modelo kmeans
+### no forma parte del flujo principal
+
 # ── Recrear el objeto kmeans con los centroides guardados ──
 centroides = np.load("kmeans_centroides.npy")
 

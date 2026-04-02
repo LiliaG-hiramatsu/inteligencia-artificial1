@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 
+### Este código es para probar cv2
+### No forma parte del flujo principal
+
 def aplicar_grabcut(arr):
     img_uint8 = arr.astype(np.uint8)
     mask = np.zeros(img_uint8.shape[:2], np.uint8)

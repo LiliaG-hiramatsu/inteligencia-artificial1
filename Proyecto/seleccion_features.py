@@ -6,6 +6,9 @@ from entrenamiento import PCA_propio
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms
 
+# Este código es para ver gráficamente los centroides de cada cluster, para el entrenamiento
+# No forma parte del flujo principal
+
 def seleccionar_features(X, y, n_features=15):
     """
     Selecciona las n_features más discriminativas usando

@@ -100,6 +100,14 @@ def extraer_caracteristicas_imagen(ruta, tam=(128, 128)):
     media_rgb = np.mean(centro[mask_centro.astype(bool)], axis=0) / 255
     std_rgb   = np.std(centro[mask_centro.astype(bool)],  axis=0) / 255
 
+     # --- Característica de aspecto ---
+    coords = cv2.findNonZero(mask2)  # Píxeles del objeto
+    aspect_ratio = 1.0  # valor neutro por defecto
+    if coords is not None and len(coords) > 10:
+        x, y, bw, bh = cv2.boundingRect(coords)
+        if bh > 0:
+            aspect_ratio = bw / bh  # < 1 → alargado (zanahoria), ~1 → redondo
+    
     # Momentos de Hu sobre el centro
     gris = (0.299*centro[:,:,0] + 0.587*centro[:,:,1] + 0.114*centro[:,:,2]) / 255
     gris = gris * mask_centro  # solo píxeles de la verdura
@@ -129,13 +137,13 @@ def extraer_caracteristicas_imagen(ruta, tam=(128, 128)):
     hu_log = -np.sign(hu)*np.log10(np.abs(hu)+1e-10)
 
     return np.concatenate([
-        feat_completa,    # 64 features imagen completa
-        feat_centro * 2,  # 64 features centro (peso doble)
-        media_rgb,        # 3
-        std_rgb,          # 3
-        hu_log            # 7
+        feat_completa,                  # 64 features imagen completa
+        feat_centro * 2,                # 64 features centro (peso doble)
+        media_rgb,                      # 3
+        std_rgb,                        # 3
+        np.array([aspect_ratio]),       # 1
+        hu_log                          # 7
     ])
-    # Total: 141 features
 
 
 def cargar_dataset_imagenes(carpeta_raiz):
@@ -282,8 +290,8 @@ def graficar_clusters_2d(X_pca, etiquetas_kmeans, y_real,
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-
     # ── Cargar o procesar dataset ──
+    # si queres reentrenar el modelo, eliminá estos dos archivos: dataset_img_X.npy y dataset_img_y.npy así se ejecuta el else
     if os.path.exists("dataset_img_X.npy") and os.path.exists("dataset_img_y.npy"):
         print("Cargando dataset preprocesado...")
         X = np.load("dataset_img_X.npy")
@@ -307,10 +315,10 @@ if __name__ == "__main__":
     X_reducido = pca_kmeans.fit_transform(X_norm)
     
     # Usar la mejor semilla encontrada
-    kmeans = KMeans_propio(k=4, semilla=88)
+    kmeans = KMeans_propio(k=4, semilla=99)
     kmeans.fit(X_reducido)
     etiquetas = kmeans.predict(X_reducido)
-
+    
     mapa = asignar_etiquetas_clusters(etiquetas, y)
     print("\nMapeo de clusters:")
     for cluster, clase_idx in mapa.items():
@@ -337,9 +345,6 @@ if __name__ == "__main__":
     Este codigo lo hice para buscar una mejor precisión, probando muchas semillas para 
     inicializar kmeans.
     
-    pca_kmeans = PCA_propio(n_componentes=20)
-    X_reducido = pca_kmeans.fit_transform(X_norm)
-
     mejor_acc = 0
     mejor_kmeans = None
     mejor_etiquetas = None

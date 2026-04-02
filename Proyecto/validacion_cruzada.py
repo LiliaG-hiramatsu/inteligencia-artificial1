@@ -3,6 +3,9 @@ from collections import Counter
 from knn import KNN
 import matplotlib.pyplot as plt
 
+# Este código implementa validación cruzada para la parte de reconocimiento de voz
+# No forma parte del flujo principal
+
 # ─────────────────────────────────────────────
 # VALIDACIÓN CRUZADA K-FOLD DESDE CERO
 # ─────────────────────────────────────────────

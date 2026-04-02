@@ -1,7 +1,3 @@
-# ─────────────────────────────────────────────
-# PRUEBA 9-03-2026
-# ─────────────────────────────────────────────
-
 import librosa
 import numpy as np
 import os
@@ -47,7 +43,7 @@ def extraer_caracteristicas(ruta_audio, n_mfcc=13):
 def cargar_dataset(carpeta_raiz):
     """
     Estructura esperada:
-        dataset_voz/
+        dataset_audio/
             papa/       *.wav
             zanahoria/  *.wav
             choclo/     *.wav
@@ -73,7 +69,7 @@ def cargar_dataset(carpeta_raiz):
 
 
 # ─────────────────────────────────────────────
-# 2. PCA IMPLEMENTADO DESDE CERO
+# 2. PCA
 # ─────────────────────────────────────────────
 
 class PCA_propio:
@@ -115,7 +111,7 @@ class PCA_propio:
 
 
 # ─────────────────────────────────────────────
-# 3. NORMALIZACIÓN (recomendada antes del PCA)
+# 3. NORMALIZACIÓN
 # ─────────────────────────────────────────────
 
 def normalizar(X):
@@ -218,7 +214,7 @@ if __name__ == "__main__":
 
     # PCA final (reducción real para el KNN)
     # Elegir n según el scree plot (típicamente donde se llega a ~95%)
-    pca_knn = PCA_propio(n_componentes=20)
+    pca_knn = PCA_propio(n_componentes=27)
     X_reducido = pca_knn.fit_transform(X_norm)
     print(f"Dimensión reducida para KNN: {X_reducido.shape}")
     
