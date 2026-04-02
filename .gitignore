@@ -1,0 +1,12 @@
+/Proyecto/dataset_audio
+/Proyecto/test_audio
+/Proyecto/test_img
+/Proyecto/audio_test.wav
+/Proyecto/mfcc_audio_dataset.csv
+/Proyecto/audios
+/Proyecto/entorno_ia
+/Proyecto/dataset_img
+/Proyecto/*.png
+/Proyecto/__pycache__
+/Proyecto/diagnostico_visual.py
+/Proyecto/verificacion.py
